@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import collections
 import hashlib
 import os
 import pathlib
@@ -36,14 +37,18 @@ class DuplicateFinder:
     
 
     # Thread worker, managed by hash_files
-    def check_files(self, files):
+    def check_files(self, files, hashed):
+
+        # Store hash results as namedtuple
+        HashedFile = collections.namedtuple("HashedFile", ["hash", "file_path"])
         while files:
             file = files.get()
             file_hash = md5sum(file) 
-            if self.file_hashes.get(file_hash, False):
-                self.add_file(file, file_hash)
-            else:
-                self.add_hash(file_hash, file)
+            # Store result
+            hf = HashedFile(file_hash, file)
+            # debug
+            print(hf)
+            hashed.put(hf)
 
 
     # Find duplicates in directory
@@ -64,19 +69,20 @@ class DuplicateFinder:
     # Get hashes of all files
     def hash_files(self, files):
 
-        workers = dict()
+        # Queue for storing results
+        hashed_files = queue.Queue()
+
         for n in self.max_threads:
             # Create thread and add to dictionary (hacky...)
-            t = threading.Thread(target=self.check_files, args=(files,))
-            workers[n] = t
+            t = threading.Thread(target=self.check_files, args=(files,hashed_files,))
             
             # Run thread
             t.start()
+            t.join()
         
-        while len(workers):
-            for k, t in workers.items():
-                if not t.is_alive():
-                    del workers[k]
+        # TODO: store results in self.file_hashes
+        
+        
             
 
 # Make Queue of files in directory (recursive)
