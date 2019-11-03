@@ -4,7 +4,6 @@ import hashlib
 import os
 import pathlib
 import queue
-import shutil
 import threading
 
 
