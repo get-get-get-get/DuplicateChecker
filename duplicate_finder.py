@@ -135,6 +135,7 @@ def md5sum(filename):
 def main():
     
     finder = DuplicateFinder(args.directory)
+    finder.max_threads = args.threads
     finder.find_duplicates()
     finder.show_duplicates()
 
@@ -149,6 +150,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "directory",
         help="file to hash"
+    )
+    parser.add_argument(
+        "-t",
+        "--threads",
+        default=10,
+        type=int,
+        help="Threads used for hashing"
     )
 
     args = parser.parse_args()
