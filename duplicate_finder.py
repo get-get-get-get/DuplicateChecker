@@ -40,15 +40,14 @@ class DuplicateFinder:
     def check_files(self, files, hashed):
 
         # Store hash results as namedtuple
-        HashedFile = collections.namedtuple("HashedFile", ["hash", "file_path"])
-        while files:
+        HashedFile = collections.namedtuple("HashedFile", ["hash", "file"])
+
+        while not files.empty():
             file = files.get()
             file_hash = md5sum(file) 
             # Store result
             hf = HashedFile(file_hash, file)
-            # debug
-            print(hf)
-            hashed.put(hf)
+            hashed.append(hf)
 
 
     # Find duplicates in directory
@@ -56,7 +55,10 @@ class DuplicateFinder:
     def find_duplicates(self):
 
         files = get_files(self.directory)
-        self.hash_files(files)
+
+        # hashed is a list of HashedFile('hash', 'file') tuples
+        hashedfiles = self.hash_files(files)
+        self.process_hashed_files(hashedfiles)
 
         # Find where hash matches multiple files
         for file_hash, file_list in self.file_hashes.items():
@@ -70,20 +72,31 @@ class DuplicateFinder:
     def hash_files(self, files):
 
         # Queue for storing results
-        hashed_files = queue.Queue()
+        hashed_files = []
 
-        for n in self.max_threads:
+        workers = []
+        for n in range(self.max_threads):
             # Create thread and add to dictionary (hacky...)
             t = threading.Thread(target=self.check_files, args=(files,hashed_files,))
             
             # Run thread
             t.start()
-            t.join()
+            workers.append(t)
         
-        # TODO: store results in self.file_hashes
+        for worker in workers:
+            worker.join()
         
-        
-            
+        return hashed_files
+    
+    # Given list of namedtuples (HashedFile('hash', 'file')), adds to self.hashes
+    def process_hashed_files(self, hashedfiles):
+
+        for hf in hashedfiles:
+            if self.file_hashes.get(hf.hash, False):
+                self.file_hashes[hf.hash].append(hf.file)
+            else:
+                self.file_hashes[hf.hash] = [hf.file]
+    
 
 # Make Queue of files in directory (recursive)
 def get_files(directory):
@@ -113,7 +126,9 @@ def md5sum(filename):
 def main():
     
     finder = DuplicateFinder(args.directory)
-    print(finder.find_duplicates())
+    duplicates = finder.find_duplicates()
+    for hashed, file in duplicates.items():
+        print(f"{hashed}: {file}")
 
 
 
