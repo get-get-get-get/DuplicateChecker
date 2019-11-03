@@ -3,7 +3,9 @@ import collections
 import hashlib
 import os
 import pathlib
+import pprint
 import queue
+import shutil
 import threading
 
 
@@ -16,7 +18,6 @@ class DuplicateFinder:
         self.directory = str(pathlib.Path(directory))
         self.file_hashes = dict()
         self.duplicates = dict()
-        self._lock = threading.Lock()
 
     
     # Add hash as dictionary key
@@ -88,6 +89,7 @@ class DuplicateFinder:
         
         return hashed_files
     
+
     # Given list of namedtuples (HashedFile('hash', 'file')), adds to self.hashes
     def process_hashed_files(self, hashedfiles):
 
@@ -96,6 +98,15 @@ class DuplicateFinder:
                 self.file_hashes[hf.hash].append(hf.file)
             else:
                 self.file_hashes[hf.hash] = [hf.file]
+    
+
+    # Print duplicates in readable format
+    def show_duplicates(self):
+        
+        for file_hash, file_paths in self.duplicates.items():
+            print(file_hash)
+            for file_path in file_paths:
+                print("\t%s" % file_path)
     
 
 # Make Queue of files in directory (recursive)
@@ -126,9 +137,8 @@ def md5sum(filename):
 def main():
     
     finder = DuplicateFinder(args.directory)
-    duplicates = finder.find_duplicates()
-    for hashed, file in duplicates.items():
-        print(f"{hashed}: {file}")
+    finder.find_duplicates()
+    finder.show_duplicates()
 
 
 
