@@ -4,7 +4,9 @@ import hashlib
 import os
 import pathlib
 import queue
+import shutil
 import threading
+import time
 
 
 class DuplicateFinder:
@@ -74,7 +76,11 @@ class DuplicateFinder:
     # Get hashes of all files
     def hash_files(self, files):
 
-        # Queue for storing results
+        # Print status bar
+        status = threading.Thread(target=print_status, args=(files,))
+        status.start()
+
+        # For storing results
         hashed_files = []
 
         workers = []
@@ -87,10 +93,12 @@ class DuplicateFinder:
             t.start()
             workers.append(t)
 
+        status.join()
         for worker in workers:
             worker.join()
 
         return hashed_files
+
 
     # Given list of namedtuples (HashedFile('hash', 'file')), adds to self.hashes
     def process_hashed_files(self, hashedfiles):
@@ -133,6 +141,49 @@ def md5sum(filename):
             h.update(mv[:n])
 
     return h.hexdigest()
+
+
+# Prints a status bar until queue is empty
+def print_status(target_queue, sleep_time=1):
+ 
+    
+    start_size = target_queue.qsize()
+
+    # Terminal size 
+    try:
+        width = shutil.get_terminal_size().columns 
+    except:
+        width = 80
+
+    # Status bar format
+    intro = "[STATUS]"
+    stat_char = "#"
+    offset = 10
+    bar_size = width - len(intro) - offset
+
+    while True:
+
+        # Check how much has changed 
+        current_size = target_queue.qsize()
+        queue_remaining = current_size / start_size
+        # Translate that to characters on screen
+        blank_count = int(queue_remaining * bar_size)
+        fill_count = int(bar_size - blank_count)
+        
+        # Create status bar
+        bar_empty = " " * blank_count
+        bar_fill = stat_char * fill_count
+        status_bar = f"{intro} [{bar_fill}{bar_empty}]"
+
+        # Print status bar
+        print(f"\r{status_bar}", end="", flush=True)
+
+        if current_size == 0:
+            print()
+            break
+
+        time.sleep(sleep_time)
+
 
 
 def main():
